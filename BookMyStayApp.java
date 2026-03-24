@@ -1,9 +1,9 @@
 /**
- * Book My Stay App - Use Case 8
- * Booking History & Reporting
+ * Book My Stay App - Use Case 9
+ * Error Handling & Validation using Custom Exceptions
  * 
  * Demonstrates:
- * List (ordered storage), historical tracking, reporting separation
+ * Input Validation, Fail-Fast, Custom Exceptions, Safe State Handling
  * 
  * @author Maharnish
  * @version 1.0
@@ -11,93 +11,60 @@
 
 import java.util.*;
 
-// ----------- Reservation ----------- //
-class Reservation {
-    private String reservationId;
-    private String guestName;
-    private String roomType;
-
-    public Reservation(String reservationId, String guestName, String roomType) {
-        this.reservationId = reservationId;
-        this.guestName = guestName;
-        this.roomType = roomType;
-    }
-
-    public String getReservationId() {
-        return reservationId;
-    }
-
-    public String getRoomType() {
-        return roomType;
-    }
-
-    public void display() {
-        System.out.println("ID: " + reservationId +
-                " | Guest: " + guestName +
-                " | Room: " + roomType);
+// ----------- Custom Exceptions ----------- //
+class InvalidRoomTypeException extends Exception {
+    public InvalidRoomTypeException(String message) {
+        super(message);
     }
 }
 
-// ----------- Booking History ----------- //
-class BookingHistory {
-
-    // Ordered storage
-    private List<Reservation> history = new ArrayList<>();
-
-    // Add confirmed booking
-    public void addReservation(Reservation r) {
-        history.add(r);
-    }
-
-    // Retrieve all bookings
-    public List<Reservation> getAllReservations() {
-        return history;
-    }
-
-    // Display history
-    public void displayHistory() {
-        System.out.println("\nBooking History:\n");
-
-        if (history.isEmpty()) {
-            System.out.println("No bookings found.");
-            return;
-        }
-
-        for (Reservation r : history) {
-            r.display();
-        }
+class InsufficientRoomsException extends Exception {
+    public InsufficientRoomsException(String message) {
+        super(message);
     }
 }
 
-// ----------- Reporting Service ----------- //
-class BookingReportService {
+// ----------- Inventory ----------- //
+class RoomInventory {
 
-    // Generate summary report
-    public void generateReport(List<Reservation> reservations) {
+    private Map<String, Integer> inventory = new HashMap<>();
 
-        System.out.println("\nBooking Report Summary:\n");
+    public RoomInventory() {
+        inventory.put("Single Room", 2);
+        inventory.put("Double Room", 1);
+        inventory.put("Suite Room", 0);
+    }
 
-        if (reservations.isEmpty()) {
-            System.out.println("No data available.");
-            return;
+    public void validateRoomType(String roomType) throws InvalidRoomTypeException {
+        if (!inventory.containsKey(roomType)) {
+            throw new InvalidRoomTypeException("Invalid room type: " + roomType);
         }
+    }
 
-        Map<String, Integer> countByRoomType = new HashMap<>();
-
-        // Count bookings per room type
-        for (Reservation r : reservations) {
-            countByRoomType.put(
-                r.getRoomType(),
-                countByRoomType.getOrDefault(r.getRoomType(), 0) + 1
-            );
+    public void validateAvailability(String roomType) throws InsufficientRoomsException {
+        if (inventory.get(roomType) <= 0) {
+            throw new InsufficientRoomsException("No rooms available for: " + roomType);
         }
+    }
 
-        // Display report
-        for (String type : countByRoomType.keySet()) {
-            System.out.println(type + " Bookings: " + countByRoomType.get(type));
+    public void bookRoom(String roomType)
+            throws InvalidRoomTypeException, InsufficientRoomsException {
+
+        // Fail-fast validation
+        validateRoomType(roomType);
+        validateAvailability(roomType);
+
+        // Safe state update
+        inventory.put(roomType, inventory.get(roomType) - 1);
+
+        System.out.println("Room booked successfully: " + roomType);
+    }
+
+    public void displayInventory() {
+        System.out.println("\nCurrent Inventory:");
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " : " + inventory.get(type));
         }
-
-        System.out.println("Total Bookings: " + reservations.size());
     }
 }
 
@@ -106,22 +73,31 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        System.out.println("===== Booking History & Reporting =====");
+        System.out.println("===== Validation & Error Handling =====");
 
-        BookingHistory history = new BookingHistory();
-        BookingReportService reportService = new BookingReportService();
+        RoomInventory inventory = new RoomInventory();
 
-        // Simulate confirmed bookings (from UC6)
-        history.addReservation(new Reservation("SR-1", "Alice", "Single Room"));
-        history.addReservation(new Reservation("DR-1", "Bob", "Double Room"));
-        history.addReservation(new Reservation("SR-2", "Charlie", "Single Room"));
+        // Test cases (valid + invalid)
+        String[] testRequests = {
+                "Single Room",     // valid
+                "Suite Room",      // no availability
+                "Luxury Room"      // invalid type
+        };
 
-        // Admin views booking history
-        history.displayHistory();
+        for (String request : testRequests) {
+            System.out.println("\nProcessing request: " + request);
 
-        // Admin generates report
-        reportService.generateReport(history.getAllReservations());
+            try {
+                inventory.bookRoom(request);
+            } catch (InvalidRoomTypeException | InsufficientRoomsException e) {
+                // Graceful failure
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
 
-        System.out.println("\nReport generated successfully (read-only).");
+        // Final state
+        inventory.displayInventory();
+
+        System.out.println("\nSystem continues running safely.");
     }
 }
