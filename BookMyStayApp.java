@@ -1,67 +1,103 @@
+/**
+ * Book My Stay App - Use Case 8
+ * Booking History & Reporting
+ * 
+ * Demonstrates:
+ * List (ordered storage), historical tracking, reporting separation
+ * 
+ * @author Maharnish
+ * @version 1.0
+ */
 
 import java.util.*;
 
-// ----------- Add-On Service ----------- //
-class AddOnService {
-    private String name;
-    private double price;
+// ----------- Reservation ----------- //
+class Reservation {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
 
-    public AddOnService(String name, double price) {
-        this.name = name;
-        this.price = price;
+    public Reservation(String reservationId, String guestName, String roomType) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public double getPrice() {
-        return price;
+    public String getReservationId() {
+        return reservationId;
     }
 
-    public String getName() {
-        return name;
+    public String getRoomType() {
+        return roomType;
+    }
+
+    public void display() {
+        System.out.println("ID: " + reservationId +
+                " | Guest: " + guestName +
+                " | Room: " + roomType);
     }
 }
 
-// ----------- Add-On Service Manager ----------- //
-class AddOnServiceManager {
+// ----------- Booking History ----------- //
+class BookingHistory {
 
-    // Map<ReservationID, List of Services>
-    private Map<String, List<AddOnService>> serviceMap = new HashMap<>();
+    // Ordered storage
+    private List<Reservation> history = new ArrayList<>();
 
-    // Add service to a reservation
-    public void addService(String reservationId, AddOnService service) {
-        serviceMap
-            .computeIfAbsent(reservationId, k -> new ArrayList<>())
-            .add(service);
-
-        System.out.println(service.getName() + " added to " + reservationId);
+    // Add confirmed booking
+    public void addReservation(Reservation r) {
+        history.add(r);
     }
 
-    // Display services for a reservation
-    public void displayServices(String reservationId) {
-        List<AddOnService> services = serviceMap.get(reservationId);
+    // Retrieve all bookings
+    public List<Reservation> getAllReservations() {
+        return history;
+    }
 
-        System.out.println("\nServices for Reservation " + reservationId + ":");
+    // Display history
+    public void displayHistory() {
+        System.out.println("\nBooking History:\n");
 
-        if (services == null || services.isEmpty()) {
-            System.out.println("No add-on services selected.");
+        if (history.isEmpty()) {
+            System.out.println("No bookings found.");
             return;
         }
 
-        for (AddOnService s : services) {
-            System.out.println("- " + s.getName() + " : ₹" + s.getPrice());
+        for (Reservation r : history) {
+            r.display();
         }
     }
+}
 
-    // Calculate total cost
-    public double calculateTotalCost(String reservationId) {
-        List<AddOnService> services = serviceMap.get(reservationId);
+// ----------- Reporting Service ----------- //
+class BookingReportService {
 
-        if (services == null) return 0;
+    // Generate summary report
+    public void generateReport(List<Reservation> reservations) {
 
-        double total = 0;
-        for (AddOnService s : services) {
-            total += s.getPrice();
+        System.out.println("\nBooking Report Summary:\n");
+
+        if (reservations.isEmpty()) {
+            System.out.println("No data available.");
+            return;
         }
-        return total;
+
+        Map<String, Integer> countByRoomType = new HashMap<>();
+
+        // Count bookings per room type
+        for (Reservation r : reservations) {
+            countByRoomType.put(
+                r.getRoomType(),
+                countByRoomType.getOrDefault(r.getRoomType(), 0) + 1
+            );
+        }
+
+        // Display report
+        for (String type : countByRoomType.keySet()) {
+            System.out.println(type + " Bookings: " + countByRoomType.get(type));
+        }
+
+        System.out.println("Total Bookings: " + reservations.size());
     }
 }
 
@@ -70,31 +106,22 @@ public class BookMyStayApp {
 
     public static void main(String[] args) {
 
-        System.out.println("===== Add-On Services =====");
+        System.out.println("===== Booking History & Reporting =====");
 
-        AddOnServiceManager manager = new AddOnServiceManager();
+        BookingHistory history = new BookingHistory();
+        BookingReportService reportService = new BookingReportService();
 
-        // Example reservation IDs (from previous use case)
-        String res1 = "SR-1";
-        String res2 = "DR-1";
+        // Simulate confirmed bookings (from UC6)
+        history.addReservation(new Reservation("SR-1", "Alice", "Single Room"));
+        history.addReservation(new Reservation("DR-1", "Bob", "Double Room"));
+        history.addReservation(new Reservation("SR-2", "Charlie", "Single Room"));
 
-        // Create services
-        AddOnService breakfast = new AddOnService("Breakfast", 200);
-        AddOnService wifi = new AddOnService("WiFi", 100);
-        AddOnService spa = new AddOnService("Spa", 500);
+        // Admin views booking history
+        history.displayHistory();
 
-        // Add services to reservations
-        manager.addService(res1, breakfast);
-        manager.addService(res1, wifi);
-        manager.addService(res2, spa);
+        // Admin generates report
+        reportService.generateReport(history.getAllReservations());
 
-        // Display services
-        manager.displayServices(res1);
-        System.out.println("Total Add-On Cost: ₹" + manager.calculateTotalCost(res1));
-
-        manager.displayServices(res2);
-        System.out.println("Total Add-On Cost: ₹" + manager.calculateTotalCost(res2));
-
-        System.out.println("\nCore booking and inventory remain unchanged.");
+        System.out.println("\nReport generated successfully (read-only).");
     }
 }
